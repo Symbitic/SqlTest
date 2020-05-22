@@ -1,0 +1,49 @@
+{
+    "name": "Superheroes",
+    "database": {
+        "driver": "sqlite"
+    },
+    "queries": {
+        "name": "SELECT firstname, lastname FROM {{HEROES_TABLE}}",
+        "lastname": "SELECT lastname FROM {{HEROES_TABLE}}",
+        "city": "SELECT city FROM {{HEROES_TABLE}}"
+    },
+    "tables": {
+        "superheroes": [
+            "id integer primary key",
+            "firstname varchar",
+            "lastname varchar",
+            "city varchar"
+        ]
+    },
+    "tests": {
+        "test_name": {
+            "input": "superheroes_input.csv",
+            "output": "superheroes_output_name.csv",
+            "query": "name",
+            "table": "superheroes",
+            "tables": {
+                "HEROES_TABLE": "superheroes"
+            }
+        },
+        "test_lastname": {
+            "input": "superheroes_input.csv",
+            "output": "superheroes_output_lastname.csv",
+            "query": "lastname",
+            "table": "superheroes",
+            "tables": {
+                "HEROES_TABLE": "superheroes"
+            }
+        },
+        "test_city": {
+            "input": "superheroes_input.csv",
+            "output": "superheroes_output_city.csv",
+            "query": "city",
+            "skip": true,
+            "table": "superheroes",
+            "tables": {
+                "HEROES_TABLE": "superheroes"
+            }
+        }
+    }
+}

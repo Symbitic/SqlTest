@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>data/qt.png</file>
+        <file alias="qtquickcontrols2.conf">data/qtquickcontrols2.conf</file>
+        <file>qml/main.qml</file>
+        <file>qml/ConnectionDialog.qml</file>
+        <file>qml/ConnectionForm.ui.qml</file>
+        <file>qml/ResultsView.qml</file>
+    </qresource>
+</RCC>
