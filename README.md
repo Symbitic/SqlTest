@@ -1,5 +1,7 @@
 # QSqlTest
 
+[![Action Status](https://github.com/Symbitic/QSqlTest/workflows/build/badge.svg)](https://github.com/Symbitic/QSqlTest/actions)
+
 A library, command-line runner, and graphical interface for creating and executing data-driven SQL tests.
 
 ![Example syntax](./doc/json.png)

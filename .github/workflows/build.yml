@@ -1,0 +1,43 @@
+name: CMake Build Matrix
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: "Linux"
+            os: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install CMake
+        uses: symbitic/install-cmake@master
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          modules: 'qtcharts'
+
+      - name: Configure build environment on Windows
+        if: startsWith(matrix.config.os, 'windows')
+        run: |
+          call "${{ matrix.config.environment_script }}"
+        shell: cmd
+
+      - name: Configure
+        run: cmake --config Debug -S . -B build -G Ninja
+
+      - name: Build
+        run: cmake --build build --config Debug -j 4
+
+      - name: Test
+        run: cmake --build build --config Debug --target test

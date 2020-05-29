@@ -9,12 +9,27 @@
 
 #include <QDebug>
 
+#define RETURN_ERROR(msg)                                                                          \
+    d->error = msg;                                                                                \
+    emit errorMsg(msg);                                                                            \
+    return false;
+
+#define RETURN_SUCCESS()                                                                           \
+    if (d->error != "No Error") {                                                                  \
+        d->error = "No Error";                                                                     \
+        emit errorMsg("No Error");                                                                 \
+    }                                                                                              \
+    return true;
+
 struct QSqlTestPrivate
 {
     QSqlTestPrivate()
         : loaded(false)
         , db()
         , json()
+        , error("No Error")
+        , succeeded(0)
+        , failed(0)
     {
     }
 
@@ -22,6 +37,9 @@ struct QSqlTestPrivate
     QSqlTestDatabase db;
     QSqlTestJsonFile json;
     QString dirName;
+    QString error;
+    int succeeded;
+    int failed;
 };
 
 QSqlTest::QSqlTest(QObject *parent)
@@ -30,7 +48,8 @@ QSqlTest::QSqlTest(QObject *parent)
 {
     /* clang-format off */
     const auto errorHandler = [=](const QString &err) {
-        emit error(err);
+        d->error = err;
+        emit errorMsg(err);
     };
     QObject::connect(&d->db, &QSqlTestDatabase::error, errorHandler);
     QObject::connect(&d->json, &QSqlTestJsonFile::error, errorHandler);
@@ -47,6 +66,21 @@ bool QSqlTest::loaded() const
     return d->loaded;
 }
 
+QString QSqlTest::error() const
+{
+    return d->error;
+}
+
+int QSqlTest::succeeded() const
+{
+    return d->succeeded;
+}
+
+int QSqlTest::failed() const
+{
+    return d->failed;
+}
+
 void QSqlTest::setLogging(bool enable)
 {
     QSqlTestLogger::setLogging(enable);
@@ -56,13 +90,13 @@ bool QSqlTest::load(const QString &jsonFilename)
 {
     bool ret = d->json.load(jsonFilename);
     if (!ret) {
-        return false;
+        RETURN_ERROR("Error loading file");
     }
 
     d->dirName = QFileInfo(jsonFilename).absolutePath();
 
     d->loaded = true;
-    return true;
+    RETURN_SUCCESS();
 }
 
 bool QSqlTest::connect()
@@ -70,7 +104,7 @@ bool QSqlTest::connect()
     QSqlTestLogger::print("Connecting to Database");
     if (!loaded()) {
         QSqlTestLogger::print("<red>FAILED!</red>");
-        return false;
+        RETURN_ERROR("Not connected");
     }
 
     QSqlTestDatabaseSettings settings;
@@ -84,11 +118,11 @@ bool QSqlTest::connect()
     bool ret = d->db.connect(settings);
     if (!ret) {
         QSqlTestLogger::print("<red>FAILED!</red>");
-        return false;
+        RETURN_ERROR(d->db.lastError());
     }
 
     QSqlTestLogger::print("<green>SUCCESS!</green>");
-    return true;
+    RETURN_SUCCESS();
 }
 
 bool QSqlTest::createTables()
@@ -96,7 +130,7 @@ bool QSqlTest::createTables()
     QSqlTestLogger::print("Creating test tables");
     if (!connected()) {
         QSqlTestLogger::print("<red>FAILED!</red>");
-        return false;
+        RETURN_ERROR("Not connected");
     }
 
     QHash<QString, QStringList>::const_iterator i;
@@ -112,18 +146,18 @@ bool QSqlTest::createTables()
         if (!ret) {
             // TODO: Better message.
             QSqlTestLogger::print("<red>FAILED!</red>");
-            return false;
+            RETURN_ERROR(d->db.lastError());
         }
     }
 
     QSqlTestLogger::print("<green>SUCCESS!</green>");
-    return true;
+    RETURN_SUCCESS();
 }
 
 bool QSqlTest::startTest(const QString &testName)
 {
-    QSqlTestCsvFile2 inputFile;
-    QSqlTestCsvFile2 outputFile;
+    QSqlTestCsvFile inputFile;
+    QSqlTestCsvFile outputFile;
     const auto testCase = d->json.tests().value(testName);
     const auto tableName = testCase.tableName;
     auto inputFilename = testCase.input;
@@ -144,18 +178,16 @@ bool QSqlTest::startTest(const QString &testName)
 
     ret = inputFile.load(inputFilename);
     if (!ret) {
-        QSqlTestLogger::fail(QString::fromLatin1("%1 (error loading input file %2)")
-                                     .arg(testName)
-                                     .arg(inputFilename));
-        return false;
+        const auto &err = QLatin1String("Error loading input file %1").arg(inputFilename);
+        QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(err));
+        RETURN_ERROR(err);
     }
 
     ret = outputFile.load(outputFilename);
     if (!ret) {
-        QSqlTestLogger::fail(QString::fromLatin1("%1 (error loading output file %2)")
-                                     .arg(testName)
-                                     .arg(outputFilename));
-        return false;
+        const auto &err = QLatin1String("Error loading output file %1").arg(outputFilename);
+        QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(err));
+        RETURN_ERROR(err);
     }
 
     QString columnNames = inputFile.headerData(0).toString();
@@ -165,6 +197,7 @@ bool QSqlTest::startTest(const QString &testName)
         inserts.append(", ?");
     }
 
+    // Do not check return value.
     ret = d->db.exec(QString::fromLatin1("DELETE FROM %1").arg(tableName));
 
     const auto insertString = QString("INSERT INTO %1 (%2) VALUES (%3)")
@@ -189,23 +222,24 @@ bool QSqlTest::startTest(const QString &testName)
     ret = d->db.execBatch(insertString, values);
     if (!ret) {
         QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(d->db.lastError()));
+        RETURN_ERROR(d->db.lastError());
     }
 
     const auto model = d->db.execStatement(query);
 
     if (model->rowCount() != outputFile.rowCount()) {
-        QSqlTestLogger::fail(QString::fromLatin1("%1 (expected %2 rows, Got %3)")
-                                     .arg(testName)
-                                     .arg(outputFile.rowCount())
-                                     .arg(model->rowCount()));
-        return false;
+        const auto &err = QLatin1String("Expected %1 rows, got %2")
+                                  .arg(outputFile.rowCount())
+                                  .arg(model->rowCount());
+        QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(err));
+        RETURN_ERROR(err);
     }
     if (model->columnCount() != outputFile.columnCount()) {
-        QSqlTestLogger::fail(QString::fromLatin1("%1 (expected %2 columns, Got %3)")
-                                     .arg(testName)
-                                     .arg(outputFile.columnCount())
-                                     .arg(model->columnCount()));
-        return false;
+        const auto &err = QLatin1String("Expected %2 columns, got %3")
+                                  .arg(outputFile.columnCount())
+                                  .arg(model->columnCount());
+        QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(err));
+        RETURN_ERROR(err);
     }
 
     const auto rowCount = model->rowCount();
@@ -218,21 +252,19 @@ bool QSqlTest::startTest(const QString &testName)
             const auto sqlValue = model->data(sqlIndex);
 
             if (csvValue != sqlValue) {
-                const auto err = QString::fromLatin1("%1 (row %2, column %3 - expected %4, got %5)")
-                                         .arg(testName)
+                const auto err = QLatin1String("row %1, column %2 - expected %3, got %4")
                                          .arg(row)
                                          .arg(column)
                                          .arg(csvValue.toString())
                                          .arg(sqlValue.toString());
-                QSqlTestLogger::fail(err);
+                QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(err));
                 return false;
             }
         }
     }
 
     QSqlTestLogger::pass(testName);
-
-    return true;
+    RETURN_SUCCESS();
 }
 
 bool QSqlTest::start(const QString &fileName)

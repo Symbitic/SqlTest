@@ -8,8 +8,6 @@
 #include <QStringList>
 #include <QTextStream>
 
-#include <QDebug>
-
 #define CHECK_TYPE(STR, TYPE)                                                                      \
     {                                                                                              \
         bool ret;                                                                                  \
@@ -78,146 +76,9 @@ static QVariantList parseLine(const QString &string)
     return line;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
 struct QSqlTestCsvFilePrivate
 {
     QSqlTestCsvFilePrivate()
-        : filename()
-        , columnNames()
-        , rows()
-    {
-    }
-
-    QString filename;
-    QList<QVariantList> rows;
-    QStringList columnNames;
-};
-
-QSqlTestCsvFile::QSqlTestCsvFile(QObject *parent)
-    : QObject(parent)
-    , d(new QSqlTestCsvFilePrivate)
-{
-}
-
-QSqlTestCsvFile::QSqlTestCsvFile(const QString &filename, QObject *parent)
-    : QObject(parent)
-    , d(new QSqlTestCsvFilePrivate)
-{
-    load(filename);
-}
-
-QString QSqlTestCsvFile::filename() const
-{
-    return d->filename;
-}
-
-QStringList QSqlTestCsvFile::columnNames() const
-{
-    return d->columnNames;
-}
-
-QList<QVariantList> QSqlTestCsvFile::rows() const
-{
-    return d->rows;
-}
-
-bool QSqlTestCsvFile::load(const QString &filename)
-{
-    if (!QFile::exists(filename)) {
-        emit error(tr("%1 does not exist").arg(filename));
-        return false;
-    }
-
-    QFile file(filename);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        emit error(tr("Error opening %1").arg(filename));
-        return false;
-    }
-
-    d->filename = filename;
-
-    /*
-    https://github.com/python/cpython/blob/master/Lib/csv.py#L383
-    is_header = not any(cell.isdigit() for cell in csv_table[0])
-    Given a CSV table csv_table, grab the top (zeroth) row. Iterate through the cells and check if
-    they contain any pure digit strings. If so, it's not a header. has_header =
-    ''.join(next(some_csv_reader)).isalpha() sim = (df1.dtypes.values == df2.dtypes.values).mean()
-    https://stackoverflow.com/questions/2670515/autodetect-presence-of-csv-headers-in-a-file
-    */
-
-    QTextStream stream(&file);
-
-    while (!stream.atEnd()) {
-        QString line = stream.readLine();
-        if (line.length() == 0) {
-            continue;
-        }
-
-        if (d->columnNames.isEmpty()) {
-            d->columnNames = line.split(',').replaceInStrings(" ", "");
-            for (int i = 0; i < d->columnNames.size(); i++) {
-                d->columnNames.replace(i, d->columnNames.at(i).toUpper());
-            }
-            continue;
-        }
-
-        d->rows.append(parseLine(line));
-    }
-
-    return true;
-}
-
-QVariantList QSqlTestCsvFile::row(int index) const
-{
-    if (d->rows.isEmpty()) {
-        return QVariantList();
-    }
-    return d->rows.at(index);
-}
-
-QVariantList QSqlTestCsvFile::column(int index) const
-{
-    QVariantList list;
-    if (index == -1 || index > d->columnNames.size() - 1) {
-        return list;
-    }
-
-    for (const auto row : rows()) {
-        list << row.at(index);
-    }
-
-    return list;
-}
-
-QVariantList QSqlTestCsvFile::column(const QString &name) const
-{
-    if (!d->columnNames.contains(name)) {
-        return QVariantList();
-    }
-    const int index = d->columnNames.indexOf(name.toUpper());
-
-    return column(index);
-}
-
-QVariant QSqlTestCsvFile::column(int rowIndex, int columnIndex) const
-{
-    return d->rows.at(rowIndex).at(columnIndex);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-struct QSqlTestCsvFile2Private
-{
-    QSqlTestCsvFile2Private()
         : fileName()
         , lastError("No Error")
         , data()
@@ -231,13 +92,13 @@ struct QSqlTestCsvFile2Private
     QVariantList headerData;
 };
 
-QSqlTestCsvFile2::QSqlTestCsvFile2(QObject *parent)
+QSqlTestCsvFile::QSqlTestCsvFile(QObject *parent)
     : QAbstractTableModel(parent)
-    , d(new QSqlTestCsvFile2Private)
+    , d(new QSqlTestCsvFilePrivate)
 {
 }
 
-bool QSqlTestCsvFile2::load(const QString &fileName)
+bool QSqlTestCsvFile::load(const QString &fileName)
 {
     if (!QFile::exists(fileName)) {
         d->lastError = QString::fromLatin1("%1 does not exist").arg(fileName);
@@ -294,29 +155,29 @@ bool QSqlTestCsvFile2::load(const QString &fileName)
     return true;
 }
 
-QString QSqlTestCsvFile2::fileName() const
+QString QSqlTestCsvFile::fileName() const
 {
     return d->fileName;
 }
 
-QString QSqlTestCsvFile2::lastError() const
+QString QSqlTestCsvFile::lastError() const
 {
     return d->lastError;
 }
 
-int QSqlTestCsvFile2::rowCount(const QModelIndex &parent) const
+int QSqlTestCsvFile::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent)
     return d->data.size();
 }
 
-int QSqlTestCsvFile2::columnCount(const QModelIndex &parent) const
+int QSqlTestCsvFile::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent)
     return d->headerData.size();
 }
 
-QVariant QSqlTestCsvFile2::data(const QModelIndex &index, int role) const
+QVariant QSqlTestCsvFile::data(const QModelIndex &index, int role) const
 {
     const auto row = index.row();
     const auto column = index.column();
@@ -329,7 +190,7 @@ QVariant QSqlTestCsvFile2::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
-QVariant QSqlTestCsvFile2::headerData(int section, Qt::Orientation orientation, int role) const
+QVariant QSqlTestCsvFile::headerData(int section, Qt::Orientation orientation, int role) const
 {
     const auto size = d->headerData.size();
     if (role == Qt::DisplayRole && orientation == Qt::Horizontal && section < size) {

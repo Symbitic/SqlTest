@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     QSqlTest test;
     bool ret;
 
-    QObject::connect(&test, &QSqlTest::error, errorHandler);
+    QObject::connect(&test, &QSqlTest::errorMsg, errorHandler);
 
     const auto file = parser.positionalArguments().at(0);
 
