@@ -17,12 +17,10 @@ jobs:
             os: ubuntu-latest
           - name: "macOS"
             os: macos-latest
-          - name: "Windows (x32)"
-            os: windows-latest
-            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars32.bat"
-          - name: "Windows (x64)"
+          - name: "Windows"
             os: windows-latest
             environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
+            arch: win64_msvc2017_64
 
     steps:
       - uses: actions/checkout@v1
@@ -33,6 +31,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v2
         with:
+          arch: '${{ matrix.config.arch }}'
           version: '5.14.2'
           modules: 'qtcharts'
 
