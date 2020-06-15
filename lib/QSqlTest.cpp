@@ -7,17 +7,17 @@
 #include <QDir>
 #include <QRegExp>
 
+#include <QUrl>
 #include <QDebug>
 
-#define RETURN_ERROR(msg)                                                                          \
-    d->error = msg;                                                                                \
-    emit errorMsg(msg);                                                                            \
+#define RETURN_ERROR(err)                                                                          \
+    d->error = err;                                                                                \
+    emit error(err);                                                                               \
     return false;
 
 #define RETURN_SUCCESS()                                                                           \
-    if (d->error != "No Error") {                                                                  \
-        d->error = "No Error";                                                                     \
-        emit errorMsg("No Error");                                                                 \
+    if (d->error != SqlTestError::NoError) {                                                       \
+        d->error = SqlTestError::NoError;                                                          \
     }                                                                                              \
     return true;
 
@@ -27,53 +27,62 @@ struct QSqlTestPrivate
         : loaded(false)
         , db()
         , json()
-        , error("No Error")
-        , succeeded(0)
+        , error()
+        , passed(0)
         , failed(0)
+        , tests()
+        , skipped(0)
     {
     }
 
     bool loaded;
     QSqlTestDatabase db;
     QSqlTestJsonFile json;
-    QString dirName;
     QString error;
-    int succeeded;
+    QString dirName;
+    int passed;
     int failed;
+    int skipped;
+    QList<QSqlTestCase *> tests;
 };
+
+static const auto FileNotFound = QLatin1String("Error loading %1");
+static const auto TableNotCreated = QLatin1String("Error creating %1: %2");
 
 QSqlTest::QSqlTest(QObject *parent)
     : QObject(parent)
     , d(new QSqlTestPrivate)
 {
+#if 0
     /* clang-format off */
     const auto errorHandler = [=](const QString &err) {
         d->error = err;
-        emit errorMsg(err);
+        emit error(err);
     };
     QObject::connect(&d->db, &QSqlTestDatabase::error, errorHandler);
     QObject::connect(&d->json, &QSqlTestJsonFile::error, errorHandler);
     /* clang-format on */
+#endif
 }
 
-bool QSqlTest::connected() const
+bool QSqlTest::isConnected() const
 {
     return d->db.connected();
 }
 
-bool QSqlTest::loaded() const
+bool QSqlTest::isLoaded() const
 {
     return d->loaded;
 }
 
-QString QSqlTest::error() const
+QString QSqlTest::errorString() const
 {
     return d->error;
 }
 
-int QSqlTest::succeeded() const
+int QSqlTest::passed() const
 {
-    return d->succeeded;
+    return d->passed;
 }
 
 int QSqlTest::failed() const
@@ -81,7 +90,17 @@ int QSqlTest::failed() const
     return d->failed;
 }
 
-void QSqlTest::setLogging(bool enable)
+int QSqlTest::skipped() const
+{
+    return d->skipped;
+}
+
+QList<QSqlTestCase *> QSqlTest::tests() const
+{
+    return d->tests;
+}
+
+void QSqlTest::enableLog(bool enable)
 {
     QSqlTestLogger::setLogging(enable);
 }
@@ -90,23 +109,23 @@ bool QSqlTest::load(const QString &jsonFilename)
 {
     bool ret = d->json.load(jsonFilename);
     if (!ret) {
-        RETURN_ERROR("Error loading file");
+        RETURN_ERROR(FileNotFound.arg(jsonFilename));
+    }
+
+    for (const auto testName : d->json.tests().keys()) {
+        d->tests.append(new QSqlTestCase(testName));
     }
 
     d->dirName = QFileInfo(jsonFilename).absolutePath();
-
     d->loaded = true;
+
+    emit testsChanged();
+
     RETURN_SUCCESS();
 }
 
 bool QSqlTest::connect()
 {
-    QSqlTestLogger::print("Connecting to Database");
-    if (!loaded()) {
-        QSqlTestLogger::print("<red>FAILED!</red>");
-        RETURN_ERROR("Not connected");
-    }
-
     QSqlTestDatabaseSettings settings;
     settings.driver = d->json.driver();
     settings.database = d->json.database();
@@ -117,21 +136,15 @@ bool QSqlTest::connect()
 
     bool ret = d->db.connect(settings);
     if (!ret) {
-        QSqlTestLogger::print("<red>FAILED!</red>");
         RETURN_ERROR(d->db.lastError());
     }
 
-    QSqlTestLogger::print("<green>SUCCESS!</green>");
     RETURN_SUCCESS();
 }
 
 bool QSqlTest::createTables()
 {
     QSqlTestLogger::print("Creating test tables");
-    if (!connected()) {
-        QSqlTestLogger::print("<red>FAILED!</red>");
-        RETURN_ERROR("Not connected");
-    }
 
     QHash<QString, QStringList>::const_iterator i;
     const auto tables = d->json.tables();
@@ -146,7 +159,7 @@ bool QSqlTest::createTables()
         if (!ret) {
             // TODO: Better message.
             QSqlTestLogger::print("<red>FAILED!</red>");
-            RETURN_ERROR(d->db.lastError());
+            RETURN_ERROR(TableNotCreated.arg(i.key()).arg(d->db.lastError()));
         }
     }
 
@@ -158,6 +171,7 @@ bool QSqlTest::startTest(const QString &testName)
 {
     QSqlTestCsvFile inputFile;
     QSqlTestCsvFile outputFile;
+    bool ret;
     const auto testCase = d->json.tests().value(testName);
     const auto tableName = testCase.tableName;
     auto inputFilename = testCase.input;
@@ -165,7 +179,6 @@ bool QSqlTest::startTest(const QString &testName)
     const auto queryName = testCase.queryName;
     const auto tableNames = testCase.tableNames;
     auto query = d->json.queries().value(queryName);
-    bool ret;
 
     for (const auto tableName : tableNames.keys()) {
         const auto before = QString("{{%1}}").arg(tableName);
@@ -178,15 +191,15 @@ bool QSqlTest::startTest(const QString &testName)
 
     ret = inputFile.load(inputFilename);
     if (!ret) {
-        const auto &err = QLatin1String("Error loading input file %1").arg(inputFilename);
-        QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(err));
+        const auto &err = FileNotFound.arg(inputFilename);
+        QSqlTestLogger::fail(QString("%1 (%2)").arg(testName).arg(err));
         RETURN_ERROR(err);
     }
 
     ret = outputFile.load(outputFilename);
     if (!ret) {
-        const auto &err = QLatin1String("Error loading output file %1").arg(outputFilename);
-        QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(err));
+        const auto &err = FileNotFound.arg(outputFilename);
+        QSqlTestLogger::fail(QString("%1 (%2)").arg(testName).arg(err));
         RETURN_ERROR(err);
     }
 
@@ -198,9 +211,9 @@ bool QSqlTest::startTest(const QString &testName)
     }
 
     // Do not check return value.
-    ret = d->db.exec(QString::fromLatin1("DELETE FROM %1").arg(tableName));
+    ret = d->db.exec(QLatin1String("DELETE FROM %1").arg(tableName));
 
-    const auto insertString = QString("INSERT INTO %1 (%2) VALUES (%3)")
+    const auto insertString = QLatin1String("INSERT INTO %1 (%2) VALUES (%3)")
                                       // Temporary testing table.
                                       .arg(tableName)
                                       // CSV column names.
@@ -271,18 +284,24 @@ bool QSqlTest::start(const QString &fileName)
 {
     bool ret;
 
-    ret = load(fileName);
+    QUrl url(fileName);
+    const QString &filename = url.isLocalFile() ? url.toLocalFile() : fileName;
+
+    ret = load(filename);
     if (!ret) {
-        QSqlTestLogger::print(QString::fromLatin1("<red>Error loading %1</red>").arg(fileName));
+        QSqlTestLogger::print(QLatin1String("<red>Error loading %1</red>").arg(filename));
         return false;
     }
 
     QSqlTestLogger::start(d->json.name());
 
+    QSqlTestLogger::print("Connecting to Database");
     ret = connect();
     if (!ret) {
+        QSqlTestLogger::print("<red>FAILED!</red>");
         return false;
     }
+    QSqlTestLogger::print("<green>SUCCESS!</green>");
 
     ret = createTables();
     if (!ret) {
@@ -290,16 +309,41 @@ bool QSqlTest::start(const QString &fileName)
     }
 
     for (const auto testName : d->json.tests().keys()) {
+        int index = 0;
+        for (int i = 0; i < d->tests.size(); i++) {
+            if (d->tests.at(i)->name() == testName) {
+                index = i;
+            }
+        }
+
         const bool skip = d->json.tests().value(testName).skip;
         if (skip) {
             QSqlTestLogger::skip(testName);
+            auto testcase = new QSqlTestCase(testName);
+            testcase->setStatus("Skip");
+            testcase->setFinished(true);
+            d->tests.replace(index, testcase);
+            d->skipped++;
+            emit update(SqlTestUpdate::TestSkipped);
+            emit testsChanged();
             continue;
         }
 
         ret = startTest(testName);
-        if (!ret) {
-            // return false;
+
+        auto testcase = new QSqlTestCase(testName);
+        testcase->setStatus(ret ? "Pass" : "Fail");
+        testcase->setFinished(true);
+        testcase->setPassed(ret);
+        d->tests.replace(index, testcase);
+        if (ret) {
+            d->passed++;
+            emit update(SqlTestUpdate::TestPassed);
+        } else {
+            d->failed++;
+            emit update(SqlTestUpdate::TestFailed);
         }
+        emit testsChanged();
     }
 
     d->db.close();

@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-set(CMAKE_BUILD_TYPE_INIT "Release")
+set(CMAKE_BUILD_TYPE_INIT "Debug")
 
-project(SqlTester LANGUAGES CXX VERSION 0.1.0)
+project(SqlTester LANGUAGES CXX VERSION 0.2.0)
 
-option(ENABLE_GUI "Enable the SqlTester GUI" OFF)
-option(ENABLE_TESTS "Enable unit tests" ON)
+option(ENABLE_CLI "Enable the sqltestrunner command-line tool" ON)
+option(ENABLE_GUI "Enable the SqlTester GUI" ON)
+if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug")
+    option(ENABLE_TESTS "Enable unit tests" ON)
+else()
+    option(ENABLE_TESTS "Enable unit tests" OFF)
+endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -34,7 +39,9 @@ else()
 endif()
 
 add_subdirectory(lib)
-add_subdirectory(cli)
+if(ENABLE_CLI)
+    add_subdirectory(cli)
+endif()
 if(ENABLE_GUI)
     add_subdirectory(app)
 endif()

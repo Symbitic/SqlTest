@@ -1,4 +1,4 @@
-#include "database.h"
+#include "QSqlTest.h"
 #include <QApplication>
 #include <QDebug>
 #include <QQmlApplicationEngine>
@@ -17,11 +17,7 @@ int main(int argc, char *argv[])
     app.setOrganizationName("Alex Shaw");
     app.setWindowIcon(QPixmap(":/data/qt.png"));
 
-    // QQuickStyle::setStyle(QStringLiteral("Material"));
-    // QQuickStyle::setStyle(QStringLiteral("Universal"));
-    // static QStringList availableStyles()
-
-    qmlRegisterType<Database>("SqlTester", 1, 0, "Database");
+    qmlRegisterType<QSqlTest>("SqlTester", 1, 0, "SqlTest");
 
     QQmlApplicationEngine engine;
 

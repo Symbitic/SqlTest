@@ -4,12 +4,12 @@
 
 void Test1::initTestCase()
 {
-    QSqlTest::setLogging(false);
+    QSqlTest::enableLog(false);
 }
 
 void Test1::cleanupTestCase()
 {
-    QSqlTest::setLogging(true);
+    QSqlTest::enableLog(true);
 }
 
 void Test1::success_data()

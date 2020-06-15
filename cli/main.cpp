@@ -1,5 +1,3 @@
-#include "QSqlTestCsvFile.h"
-#include "QSqlTestJsonFile.h"
 #include "QSqlTest.h"
 #include <QCoreApplication>
 #include <QCommandLineParser>
@@ -25,14 +23,8 @@ int main(int argc, char *argv[])
         std::exit(EXIT_FAILURE);
     }
 
-    const auto errorHandler = [=](const QString &err) {
-        // TODO: should exit?
-        qFatal("Error: %s", qPrintable(err));
-    };
     QSqlTest test;
     bool ret;
-
-    QObject::connect(&test, &QSqlTest::errorMsg, errorHandler);
 
     const auto file = parser.positionalArguments().at(0);
 

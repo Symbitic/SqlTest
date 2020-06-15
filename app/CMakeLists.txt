@@ -18,8 +18,6 @@ add_resources(RCC_SRCS sqltester.qrc)
 
 add_executable(sqltester
     main.cpp
-    database.h
-    database.cpp
     ${RCC_SRCS}
 )
 
@@ -31,6 +29,7 @@ target_link_libraries(sqltester PRIVATE
     Qt5::QuickControls2
     Qt5::Sql
     Qt5::Widgets
+    sqltest
 )
 
 #if (TARGET LibZip::LibZip)
