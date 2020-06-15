@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 set(CMAKE_BUILD_TYPE_INIT "Debug")
 
-project(SqlTester LANGUAGES CXX VERSION 0.2.0)
+project(SqlTest LANGUAGES CXX VERSION 0.2.0)
 
 option(ENABLE_CLI "Enable the sqltestrunner command-line tool" ON)
 option(ENABLE_GUI "Enable the SqlTester GUI" ON)
@@ -28,6 +28,7 @@ set(CMAKE_CXX_STANDARD 11)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
 include(GNUInstallDirs)
+include(InstallRequiredSystemLibraries)
 
 # Determine install location for CMake files
 if(WIN32)
@@ -78,6 +79,5 @@ set(PROJECT_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 set(PROJECT_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md)
 set(PROJECT_LICENSE_NAME "MIT")
 set(PROJECT_HOMEPAGE "https://github.com/Symbitic/QSqlTest")
-set(PROJECT_VERSION ${PROJECT_VERSION})
 
 include(CPack)

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 include(AddResources)
 
 find_package(Qt5 CONFIG REQUIRED
-    COMPONENTS Charts Concurrent Qml Quick QuickControls2 Sql Widgets
+    COMPONENTS Charts Quick QuickControls2 Sql Widgets
     OPTIONAL_COMPONENTS QuickCompiler
 )
 
@@ -23,8 +23,6 @@ add_executable(sqltester
 
 target_link_libraries(sqltester PRIVATE
     Qt5::Charts
-    Qt5::Concurrent
-    Qt5::Qml
     Qt5::Quick
     Qt5::QuickControls2
     Qt5::Sql
