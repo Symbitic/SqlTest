@@ -1,125 +1,63 @@
 name: release
 
 on:
-    push:
-        tags:
-            - v*
+  push:
+    tags:
+      - v*
 
 jobs:
-    build:
-        name: ${{ matrix.config.name }}
-        runs-on: ${{ matrix.config.os }}
-        strategy:
-            fail-fast: false
-            matrix:
-                config:
-                    - name: "Linux"
-                      os: ubuntu-latest
-                    - name: "macOS"
-                      os: macos-latest
-                    - name: "Windows"
-                      os: windows-latest
-                      environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-                      arch: win64_mingw73
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: "Linux"
+            os: ubuntu-latest
+          - name: "macOS"
+            os: macos-latest
+          - name: "Windows"
+            os: windows-latest
+            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
+            arch: win64_mingw73
 
-        steps:
-            - uses: actions/checkout@v1
+    steps:
+      - uses: actions/checkout@v1
 
-            - name: Install CMake
-              uses: symbitic/install-cmake@master
+      - name: Install CMake
+        uses: symbitic/install-cmake@master
 
-            - name: Install Qt
-              uses: jurplel/install-qt-action@v2
-              with:
-                  arch: "${{ matrix.config.arch }}"
-                  version: "5.14.2"
-                  modules: "qtcharts"
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          arch: "${{ matrix.config.arch }}"
+          version: "5.14.2"
+          modules: "qtcharts"
 
-            - name: Install rpm
-              if: startsWith(matrix.config.os, 'ubuntu')
-              run: sudo apt-get install rpm
+      - name: Install rpm
+        if: startsWith(matrix.config.os, 'ubuntu')
+        run: sudo apt-get install rpm
 
-            - name: Configure build environment on Windows
-              if: startsWith(matrix.config.os, 'windows')
-              run: |
-                  call "${{ matrix.config.environment_script }}"
-              shell: cmd
+      - name: Configure build environment on Windows
+        if: startsWith(matrix.config.os, 'windows')
+        run: |
+          call "${{ matrix.config.environment_script }}"
+        shell: cmd
 
-            - name: Configure
-              run: cmake --config Release -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Configure
+        run: cmake --config Release -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-            - name: Build
-              run: cmake --build build --config Release -j 4
+      - name: Build
+        run: cmake --build build --config Release -j 4
 
-            - name: Package
-              run: cpack
-              working-directory: build
+      - name: Package
+        run: cpack
+        working-directory: build
 
-            - name: Create Release
-              id: create_release
-              uses: actions/create-release@v1
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                tag_name: ${{ github.ref }}
-                release_name: Release ${{ github.ref }}
-
-            - name: Upload Release Asset (DEB)
-              id: upload-release-asset-deb
-              if: startsWith(matrix.config.os, 'ubuntu')
-              uses: actions/upload-release-asset@v1
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                upload_url: ${{ steps.create_release.outputs.upload_url }}
-                asset_path: ./dist/SqlTest-${{ github.ref }}.deb
-                asset_name: SqlTest-${{ github.ref }}.deb
-                asset_content_type: application/vnd.debian.binary-package
-
-            - name: Upload Release Asset (RPM)
-              id: upload-release-asset-rpm
-              if: startsWith(matrix.config.os, 'ubuntu')
-              uses: actions/upload-release-asset@v1
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                upload_url: ${{ steps.create_release.outputs.upload_url }}
-                asset_path: ./dist/SqlTest-${{ github.ref }}.rpm
-                asset_name: SqlTest-${{ github.ref }}.rpm
-                asset_content_type: application/binary
-
-            - name: Upload Release Asset (TBZ2)
-              id: upload-release-asset-tbz2
-              if: startsWith(matrix.config.os, 'ubuntu')
-              uses: actions/upload-release-asset@v1
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                upload_url: ${{ steps.create_release.outputs.upload_url }}
-                asset_path: ./dist/SqlTest-${{ github.ref }}.tar.bz2
-                asset_name: SqlTest-${{ github.ref }}.tar.bz2
-                asset_content_type: application/gzip
-
-            - name: Upload Release Asset (DMG)
-              id: upload-release-asset-dmg
-              if: startsWith(matrix.config.os, 'macos')
-              uses: actions/upload-release-asset@v1
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                upload_url: ${{ steps.create_release.outputs.upload_url }}
-                asset_path: ./dist/SqlTest-${{ github.ref }}.dmg
-                asset_name: SqlTest-${{ github.ref }}.dmg
-                asset_content_type: application/x-apple-diskimage
-
-            - name: Upload Release Asset (NSIS)
-              id: upload-release-asset-nsis
-              if: startsWith(matrix.config.os, 'windows')
-              uses: actions/upload-release-asset@v1
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                upload_url: ${{ steps.create_release.outputs.upload_url }}
-                asset_path: ./dist/SqlTest-${{ github.ref }}.exe
-                asset_name: SqlTest-${{ github.ref }}.exe
-                asset_content_type: vnd.microsoft.portable-executable
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./dist/SqlTest-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
