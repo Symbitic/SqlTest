@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 set(CMAKE_BUILD_TYPE_INIT "Debug")
 
-project(SqlTest LANGUAGES CXX VERSION 0.2.1)
+project(SqlTest LANGUAGES CXX VERSION 0.2.2)
 
 option(ENABLE_CLI "Enable the sqltestrunner command-line tool" ON)
 option(ENABLE_GUI "Enable the SqlTester GUI" ON)

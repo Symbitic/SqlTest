@@ -52,12 +52,15 @@ jobs:
         run: cmake --build build --config Release -j 4
 
       - name: Package
+        if: "!startsWith(matrix.config.os, 'macos')"
         run: cpack
         working-directory: build
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ./dist/SqlTest-*
+          files: |
+            ./build/sqltestrunner-*
+            ./dist/SqlTest-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
