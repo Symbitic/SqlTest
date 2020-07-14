@@ -4,7 +4,7 @@
 
 A library, command-line runner, and graphical interface for creating and executing data-driven SQL tests.
 
-![Example syntax](./doc/json.png)
+![JSON Syntax](./doc/json.png) ![SQL Tester](./doc/sqltester.png)
 
 **This is still a WIP, and not ready for production workflows.**
 
@@ -24,11 +24,11 @@ SQL queries are notoriously difficult to test, so I created a tool that allows q
 * [x] Add command-line interface.
 * [x] Colored logging.
 * [ ] Refactor API.
-* [ ] Add CI/CD with GitHub Actions.
+* [x] Add CI/CD with GitHub Actions.
 * [ ] Support more SQL databases (Oracle, MySQL, existing SQLite databases).
 * [ ] Add support for UPDATE queries.
 * [ ] Finalize JSON schema.
-* [ ] Finish GUI MVP.
+* [x] Finish GUI MVP.
 
 ## Using
 
