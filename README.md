@@ -12,7 +12,7 @@ A library, command-line runner, and graphical interface for creating and executi
 
 ## About
 
-I came up with the idea for this project at my job with the Census Bureau.
+I came up with the idea for this project at my job.
 Our branch involves writing a lot of SQL queries to modify or verify tables.
 
 SQL queries are notoriously difficult to test, so I created a tool that allows queries to be tested by specifying input data to be loaded into a temporary table, executing a query, and then comparing the actual results to the expected output.

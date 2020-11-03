@@ -135,7 +135,8 @@ bool QSqlTestCsvFile::load(const QString &fileName)
         }
 
         if (lineNumber == 1) {
-            const auto headerData = line.split(',').replaceInStrings(" ", "");
+            auto headerData = line.split(',').replaceInStrings(" ", "");
+            headerData.removeAll(QString("")); // Remove trailing commas.
             for (const auto header : headerData) {
                 d->headerData.append(QVariant(header.toUpper()));
             }
