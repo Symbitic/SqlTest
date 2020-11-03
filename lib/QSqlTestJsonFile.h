@@ -21,13 +21,12 @@ typedef QHash<QString, QString> QStringHash;
  */
 struct QSqlTestJsonCase
 {
-    QString input;
-    QString output;
+    QString results;
     QString queryName;
-    QString tableName;
     bool fail;
     bool skip;
     QStringHash tableNames;
+    QStringHash varNames;
 };
 
 typedef QHash<QString, QStringList> QSqlTestJsonTables;

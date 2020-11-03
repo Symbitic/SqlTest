@@ -169,73 +169,79 @@ bool QSqlTest::createTables()
 
 bool QSqlTest::startTest(const QString &testName)
 {
-    QSqlTestCsvFile inputFile;
     QSqlTestCsvFile outputFile;
     bool ret;
     const auto testCase = d->json.tests().value(testName);
-    const auto tableName = testCase.tableName;
-    auto inputFilename = testCase.input;
-    auto outputFilename = testCase.output;
-    const auto queryName = testCase.queryName;
     const auto tableNames = testCase.tableNames;
+    auto outputFilename = testCase.results;
+    const auto queryName = testCase.queryName;
+    const auto varNames = testCase.varNames;
     auto query = d->json.queries().value(queryName);
 
-    for (const auto tableName : tableNames.keys()) {
-        const auto before = QString("{{%1}}").arg(tableName);
-        const auto after = tableNames.value(tableName);
+    for (const auto varName : varNames.keys()) {
+        const auto before = varName;
+        const auto after = varNames.value(varName);
         query.replace(before, after);
     }
 
-    inputFilename = QDir(d->dirName).filePath(inputFilename);
-    outputFilename = QDir(d->dirName).filePath(outputFilename);
+    // Populate tables
+    for (const auto table : tableNames.keys()) {
+        QSqlTestCsvFile inputFile;
+        auto inputFilename = tableNames.value(table);
 
-    ret = inputFile.load(inputFilename);
-    if (!ret) {
-        const auto &err = FileNotFound.arg(inputFilename);
-        QSqlTestLogger::fail(QString("%1 (%2)").arg(testName).arg(err));
-        RETURN_ERROR(err);
+        inputFilename = QDir(d->dirName).filePath(inputFilename);
+
+        ret = inputFile.load(inputFilename);
+        if (!ret) {
+            const auto &err = FileNotFound.arg(inputFilename);
+            QSqlTestLogger::fail(QString("%1 (%2)").arg(testName).arg(err));
+            RETURN_ERROR(err);
+        }
+
+        QString columnNames = inputFile.headerData(0).toString();
+        QString inserts = "?";
+        for (int i = 1; i < inputFile.columnCount(); i++) {
+            columnNames.append(", " + inputFile.headerData(i).toString());
+            inserts.append(", ?");
+        }
+
+        // Do not check return value.
+        ret = d->db.exec(QLatin1String("DELETE FROM %1").arg(table));
+
+        const auto insertString = QLatin1String("INSERT INTO %1 (%2) VALUES (%3)")
+                                          // Temporary testing table.
+                                          .arg(table)
+                                          // CSV column names.
+                                          .arg(columnNames)
+                                          // Batch insert values.
+                                          .arg(inserts);
+
+        QSqlTestDatabase::Batch values;
+
+        for (int column = 0; column < inputFile.columnCount(); column++) {
+            QVariantList value;
+            for (int row = 0; row < inputFile.rowCount(); row++) {
+                QModelIndex index = inputFile.index(row, column);
+                value << inputFile.data(index);
+            }
+            values.insert(column, value);
+        }
+
+        ret = d->db.execBatch(insertString, values);
+        if (!ret) {
+            QSqlTestLogger::fail(
+                    QString::fromLatin1("%1 (%2)").arg(testName).arg(d->db.lastError()));
+            RETURN_ERROR(d->db.lastError());
+        }
     }
+
+    outputFilename = QDir(d->dirName).filePath(outputFilename);
 
     ret = outputFile.load(outputFilename);
     if (!ret) {
         const auto &err = FileNotFound.arg(outputFilename);
         QSqlTestLogger::fail(QString("%1 (%2)").arg(testName).arg(err));
         RETURN_ERROR(err);
-    }
-
-    QString columnNames = inputFile.headerData(0).toString();
-    QString inserts = "?";
-    for (int i = 1; i < inputFile.columnCount(); i++) {
-        columnNames.append(", " + inputFile.headerData(i).toString());
-        inserts.append(", ?");
-    }
-
-    // Do not check return value.
-    ret = d->db.exec(QLatin1String("DELETE FROM %1").arg(tableName));
-
-    const auto insertString = QLatin1String("INSERT INTO %1 (%2) VALUES (%3)")
-                                      // Temporary testing table.
-                                      .arg(tableName)
-                                      // CSV column names.
-                                      .arg(columnNames)
-                                      // Batch insert values.
-                                      .arg(inserts);
-
-    QSqlTestDatabase::Batch values;
-
-    for (int column = 0; column < inputFile.columnCount(); column++) {
-        QVariantList value;
-        for (int row = 0; row < inputFile.rowCount(); row++) {
-            QModelIndex index = inputFile.index(row, column);
-            value << inputFile.data(index);
-        }
-        values.insert(column, value);
-    }
-
-    ret = d->db.execBatch(insertString, values);
-    if (!ret) {
-        QSqlTestLogger::fail(QString::fromLatin1("%1 (%2)").arg(testName).arg(d->db.lastError()));
-        RETURN_ERROR(d->db.lastError());
     }
 
     const auto model = d->db.execStatement(query);

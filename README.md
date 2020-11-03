@@ -4,6 +4,8 @@
 
 A library, command-line runner, and graphical interface for creating and executing data-driven SQL tests.
 
+*JSON example below is obsolete. See [./tests/fixtures/superheroes.json](./tests/fixtures/superheroes.json) for a more up-to-date example.*
+
 ![JSON Syntax](./doc/json.png) ![SQL Tester](./doc/sqltester.png)
 
 **This is still a WIP, and not ready for production workflows.**
@@ -60,11 +62,10 @@ Each unit test must specify the following:
 
 | Name | Description |
 | ---- | ----------- |
-| `input` | Data to load into the main table. |
-| `output` | Output data. Either the results returned by a SELECT query, or the table data after running an UPDATE query. |
 | `query` | Name of the query in `queries` to use for this test. |
-| `table` | Name of the table in `tables` to create and use for this test. |
-| `tables` | A list of tables used by the query. |
+| `results` | Output data. Either the results returned by a SELECT query, or the table data after running an UPDATE query. |
+| `tables` | A map of table names to CSV input files to populate the table with. |
+| `variables` | A map of variable names to replacement values. |
 
 ## License
 

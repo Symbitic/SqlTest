@@ -242,23 +242,24 @@ bool QSqlTestJsonFile::load(const QString &filename)
             //
         }
         const auto testObject = tests.value(testName).toObject();
-        const auto input = testObject.value("input").toString();
-        const auto output = testObject.value("output").toString();
+        const auto results = testObject.value("results").toString();
         const auto query = testObject.value("query").toString();
-        const auto tableName = testObject.value("table").toString();
         const auto tablesObject = testObject.value("tables").toObject();
+        const auto varsObject = testObject.value("variables").toObject();
         const auto fail = testObject.value("fail").toBool();
         const auto skip = testObject.value("skip").toBool();
-        test.input = input;
-        test.output = output;
+        test.results = results;
         test.queryName = query;
-        test.tableName = tableName;
         test.fail = fail;
         test.skip = skip;
 
         for (const auto key : tablesObject.keys()) {
             const auto val = tablesObject.value(key).toString();
             test.tableNames.insert(key, val);
+        }
+        for (const auto key : varsObject.keys()) {
+            const auto val = varsObject.value(key).toString();
+            test.varNames.insert(key, val);
         }
         d->tests.insert(testName, test);
     }

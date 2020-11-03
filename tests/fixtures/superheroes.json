@@ -4,46 +4,44 @@
         "driver": "sqlite"
     },
     "queries": {
-        "name": "SELECT firstname, lastname FROM {{HEROES_TABLE}}",
-        "lastname": "SELECT lastname FROM {{HEROES_TABLE}}",
-        "city": "SELECT city FROM {{HEROES_TABLE}}"
+        "query_city": "SELECT firstname||' '||lastname name, city FROM VAR_HEROES",
+        "query_powers": "SELECT heroes.id heroid, powers.desc power FROM VAR_HEROES heroes, VAR_POWERS powers WHERE heroes.powersid = powers.id"
     },
     "tables": {
         "superheroes": [
             "id integer primary key",
             "firstname varchar",
             "lastname varchar",
-            "city varchar"
+            "city varchar",
+            "powersid integer"
+        ],
+        "powers": [
+            "id integer primary key",
+            "desc varchar"
         ]
     },
     "tests": {
-        "test_name": {
-            "input": "superheroes_input.csv",
-            "output": "superheroes_output_name.csv",
-            "query": "name",
-            "table": "superheroes",
-            "tables": {
-                "HEROES_TABLE": "superheroes"
-            }
-        },
-        "test_lastname": {
-            "input": "superheroes_input.csv",
-            "output": "superheroes_output_lastname.csv",
-            "query": "lastname",
-            "table": "superheroes",
-            "tables": {
-                "HEROES_TABLE": "superheroes"
-            }
-        },
         "test_city": {
-            "input": "superheroes_input.csv",
-            "output": "superheroes_output_city.csv",
-            "query": "city",
-            "skip": true,
-            "table": "superheroes",
+            "query": "query_city",
+            "results": "superheroes_output_city.csv",
             "tables": {
-                "HEROES_TABLE": "superheroes"
+              "superheroes": "superheroes_input.csv"
+            },
+            "variables": {
+                "VAR_HEROES": "superheroes"
             }
-        }
+        },
+        "test_powers": {
+          "query": "query_powers",
+          "results": "superheroes_output_power.csv",
+          "tables": {
+            "superheroes": "superheroes_input.csv",
+            "powers": "superheroes_power.csv"
+          },
+          "variables": {
+              "VAR_HEROES": "superheroes",
+              "VAR_POWERS": "powers"
+          }
+      }
     }
 }
